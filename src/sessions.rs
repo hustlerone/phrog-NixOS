@@ -3,18 +3,44 @@ use glib::warn;
 use glob::glob;
 use gtk::gio::DesktopAppInfo;
 use gtk::prelude::*;
-use std::collections::HashMap;
+use lazy_static::lazy_static;
+use std::{
+  collections::HashMap,
+  path::{Path, PathBuf},
+  env,
+};
 
 static G_LOG_DOMAIN: &str = "phrog-sessions";
 
+lazy_static! {
+    // Snippet copied from https://github.com/apognu/tuigreet
+
+    static ref XDG_DATA_DIRS: Vec<PathBuf> = {
+        let value = env::var("XDG_DATA_DIRS").unwrap_or("/usr/local/share:/usr/share".to_string());
+        env::split_paths(&value).filter(|p| p.is_absolute()).collect()
+    };
+}
+
 pub fn sessions() -> Vec<SessionObject> {
     let mut sessions = HashMap::new();
-    session_list(
-        "/usr/share/wayland-sessions/*.desktop",
-        "wayland",
-        &mut sessions,
-    );
-    session_list("/usr/share/xsessions/*.desktop", "x11", &mut sessions);
+
+    for DIR in XDG_DATA_DIRS.iter() {
+        let wl_dir = DIR.join("wayland-sessions/*.desktop");
+        let x11_dir = DIR.join("wayland-sessions/*.desktop");
+
+        session_list(
+            &wl_dir.into_os_string().into_string().unwrap(),
+            "wayland",
+            &mut sessions,
+        );
+
+        session_list(
+            &x11_dir.into_os_string().into_string().unwrap(),
+            "wayland",
+            &mut sessions,
+        );        
+    };
+
     sessions.values().cloned().collect()
 }
 
